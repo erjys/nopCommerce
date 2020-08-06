@@ -2,28 +2,41 @@
 using System.Collections.Generic;
 using System.Linq;
 using Nop.Core;
-using Nop.Core.Data;
 using Nop.Core.Domain.Messages;
+using Nop.Data;
+using Nop.Services.Caching;
+using Nop.Services.Caching.Extensions;
 using Nop.Services.Events;
 
 namespace Nop.Services.Messages
 {
+    /// <summary>
+    /// Email account service
+    /// </summary>
     public partial class EmailAccountService : IEmailAccountService
     {
-        private readonly IRepository<EmailAccount> _emailAccountRepository;
-        private readonly IEventPublisher _eventPublisher;
+        #region Fields
 
-        /// <summary>
-        /// Ctor
-        /// </summary>
-        /// <param name="emailAccountRepository">Email account repository</param>
-        /// <param name="eventPublisher">Event published</param>
-        public EmailAccountService(IRepository<EmailAccount> emailAccountRepository,
-            IEventPublisher eventPublisher)
+        private readonly ICacheKeyService _cacheKeyService;
+        private readonly IEventPublisher _eventPublisher;
+        private readonly IRepository<EmailAccount> _emailAccountRepository;
+
+        #endregion
+
+        #region Ctor
+
+        public EmailAccountService(ICacheKeyService cacheKeyService,
+            IEventPublisher eventPublisher,
+            IRepository<EmailAccount> emailAccountRepository)
         {
-            this._emailAccountRepository = emailAccountRepository;
-            this._eventPublisher = eventPublisher;
+            _cacheKeyService = cacheKeyService;
+            _eventPublisher = eventPublisher;
+            _emailAccountRepository = emailAccountRepository;
         }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>
         /// Inserts an email account
@@ -32,7 +45,7 @@ namespace Nop.Services.Messages
         public virtual void InsertEmailAccount(EmailAccount emailAccount)
         {
             if (emailAccount == null)
-                throw new ArgumentNullException("emailAccount");
+                throw new ArgumentNullException(nameof(emailAccount));
 
             emailAccount.Email = CommonHelper.EnsureNotNull(emailAccount.Email);
             emailAccount.DisplayName = CommonHelper.EnsureNotNull(emailAccount.DisplayName);
@@ -65,7 +78,7 @@ namespace Nop.Services.Messages
         public virtual void UpdateEmailAccount(EmailAccount emailAccount)
         {
             if (emailAccount == null)
-                throw new ArgumentNullException("emailAccount");
+                throw new ArgumentNullException(nameof(emailAccount));
 
             emailAccount.Email = CommonHelper.EnsureNotNull(emailAccount.Email);
             emailAccount.DisplayName = CommonHelper.EnsureNotNull(emailAccount.DisplayName);
@@ -98,7 +111,7 @@ namespace Nop.Services.Messages
         public virtual void DeleteEmailAccount(EmailAccount emailAccount)
         {
             if (emailAccount == null)
-                throw new ArgumentNullException("emailAccount");
+                throw new ArgumentNullException(nameof(emailAccount));
 
             if (GetAllEmailAccounts().Count == 1)
                 throw new NopException("You cannot delete this email account. At least one account is required.");
@@ -119,7 +132,7 @@ namespace Nop.Services.Messages
             if (emailAccountId == 0)
                 return null;
 
-            return _emailAccountRepository.GetById(emailAccountId);
+            return _emailAccountRepository.ToCachedGetById(emailAccountId);
         }
 
         /// <summary>
@@ -131,8 +144,12 @@ namespace Nop.Services.Messages
             var query = from ea in _emailAccountRepository.Table
                         orderby ea.Id
                         select ea;
-            var emailAccounts = query.ToList();
+
+            var emailAccounts = query.ToCachedList(_cacheKeyService.PrepareKeyForDefaultCache(NopMessageDefaults.EmailAccountsAllCacheKey));
+
             return emailAccounts;
         }
+
+        #endregion
     }
 }

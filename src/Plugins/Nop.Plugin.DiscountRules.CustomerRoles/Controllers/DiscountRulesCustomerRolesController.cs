@@ -1,103 +1,145 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core.Domain.Discounts;
 using Nop.Plugin.DiscountRules.CustomerRoles.Models;
 using Nop.Services.Configuration;
 using Nop.Services.Customers;
 using Nop.Services.Discounts;
+using Nop.Services.Localization;
 using Nop.Services.Security;
+using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
-using Nop.Web.Framework.Security;
+using Nop.Web.Framework.Mvc.Filters;
 
 namespace Nop.Plugin.DiscountRules.CustomerRoles.Controllers
 {
-    [AdminAuthorize]
+    [AuthorizeAdmin]
+    [Area(AreaNames.Admin)]
+    [AutoValidateAntiforgeryToken]
     public class DiscountRulesCustomerRolesController : BasePluginController
     {
-        private readonly IDiscountService _discountService;
-        private readonly ICustomerService _customerService;
-        private readonly ISettingService _settingService;
-        private readonly IPermissionService _permissionService;
+        #region Fields
 
-        public DiscountRulesCustomerRolesController(IDiscountService discountService,
-            ICustomerService customerService, ISettingService settingService,
-            IPermissionService permissionService)
+        private readonly ICustomerService _customerService;
+        private readonly IDiscountService _discountService;
+        private readonly ILocalizationService _localizationService;
+        private readonly IPermissionService _permissionService;
+        private readonly ISettingService _settingService;
+
+        #endregion
+
+        #region Ctor
+
+        public DiscountRulesCustomerRolesController(ICustomerService customerService,
+            IDiscountService discountService,
+            ILocalizationService localizationService,
+            IPermissionService permissionService,
+            ISettingService settingService)
         {
-            this._discountService = discountService;
-            this._customerService = customerService;
-            this._settingService = settingService;
-            this._permissionService = permissionService;
+            _customerService = customerService;
+            _discountService = discountService;
+            _localizationService = localizationService;
+            _permissionService = permissionService;
+            _settingService = settingService;
         }
 
-        public ActionResult Configure(int discountId, int? discountRequirementId)
+        #endregion
+
+        #region Methods
+
+        public IActionResult Configure(int discountId, int? discountRequirementId)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
                 return Content("Access denied");
 
+            //load the discount
             var discount = _discountService.GetDiscountById(discountId);
             if (discount == null)
                 throw new ArgumentException("Discount could not be loaded");
 
-            DiscountRequirement discountRequirement = null;
-            if (discountRequirementId.HasValue)
+            //check whether the discount requirement exists
+            if (discountRequirementId.HasValue && _discountService.GetDiscountRequirementById(discountRequirementId.Value) is null)
+                return Content("Failed to load requirement.");
+
+            //try to get previously saved restricted customer role identifier
+            var restrictedRoleId = _settingService.GetSettingByKey<int>(string.Format(DiscountRequirementDefaults.SettingsKey, discountRequirementId ?? 0));
+
+            var model = new RequirementModel
             {
-                discountRequirement = discount.DiscountRequirements.FirstOrDefault(dr => dr.Id == discountRequirementId.Value);
-                if (discountRequirement == null)
-                    return Content("Failed to load requirement.");
-            }
+                RequirementId = discountRequirementId ?? 0,
+                DiscountId = discountId,
+                CustomerRoleId = restrictedRoleId
+            };
 
-            var restrictedToCustomerRoleId = _settingService.GetSettingByKey<int>(string.Format("DiscountRequirement.MustBeAssignedToCustomerRole-{0}", discountRequirementId.HasValue ? discountRequirementId.Value : 0));
-            
-            var model = new RequirementModel();
-            model.RequirementId = discountRequirementId.HasValue ? discountRequirementId.Value : 0;
-            model.DiscountId = discountId;
-            model.CustomerRoleId = restrictedToCustomerRoleId;
-            //customer roles
-            //TODO localize "Select customer role"
-            model.AvailableCustomerRoles.Add(new SelectListItem { Text = "Select customer role", Value = "0" });
-            foreach (var cr in _customerService.GetAllCustomerRoles(true))
-                model.AvailableCustomerRoles.Add(new SelectListItem { Text = cr.Name, Value = cr.Id.ToString(), Selected = discountRequirement != null && cr.Id == restrictedToCustomerRoleId });
+            //set available customer roles
+            model.AvailableCustomerRoles = _customerService.GetAllCustomerRoles(true).Select(role => new SelectListItem
+            {
+                Text = role.Name,
+                Value = role.Id.ToString(),
+                Selected = role.Id == restrictedRoleId
+            }).ToList();
+            model.AvailableCustomerRoles.Insert(0, new SelectListItem
+            {
+                Text = _localizationService.GetResource("Plugins.DiscountRules.CustomerRoles.Fields.CustomerRole.Select"),
+                Value = "0"
+            });
 
-            //add a prefix
-            ViewData.TemplateInfo.HtmlFieldPrefix = string.Format("DiscountRulesCustomerRoles{0}", discountRequirementId.HasValue ? discountRequirementId.Value.ToString() : "0");
+            //set the HTML field prefix
+            ViewData.TemplateInfo.HtmlFieldPrefix = string.Format(DiscountRequirementDefaults.HtmlFieldPrefix, discountRequirementId ?? 0);
 
             return View("~/Plugins/DiscountRules.CustomerRoles/Views/Configure.cshtml", model);
         }
 
-        [HttpPost]
-        [AdminAntiForgery]
-        public ActionResult Configure(int discountId, int? discountRequirementId, int customerRoleId)
+        [HttpPost]        
+        public IActionResult Configure(RequirementModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
                 return Content("Access denied");
 
-            var discount = _discountService.GetDiscountById(discountId);
-            if (discount == null)
-                throw new ArgumentException("Discount could not be loaded");
-
-            DiscountRequirement discountRequirement = null;
-            if (discountRequirementId.HasValue)
-                discountRequirement = discount.DiscountRequirements.FirstOrDefault(dr => dr.Id == discountRequirementId.Value);
-
-            if (discountRequirement != null)
+            if (ModelState.IsValid)
             {
-                //update existing rule
-                _settingService.SetSetting(string.Format("DiscountRequirement.MustBeAssignedToCustomerRole-{0}", discountRequirement.Id), customerRoleId);
-            }
-            else
-            {
-                //save new rule
-                discountRequirement = new DiscountRequirement
+                //load the discount
+                var discount = _discountService.GetDiscountById(model.DiscountId);
+                if (discount == null)
+                    return NotFound(new { Errors = new[] { "Discount could not be loaded" } });
+
+                //get the discount requirement
+                var discountRequirement = _discountService.GetDiscountRequirementById(model.RequirementId);
+
+                //the discount requirement does not exist, so create a new one
+                if (discountRequirement == null)
                 {
-                    DiscountRequirementRuleSystemName = "DiscountRequirement.MustBeAssignedToCustomerRole"
-                };
-                discount.DiscountRequirements.Add(discountRequirement);
-                _discountService.UpdateDiscount(discount);
+                    discountRequirement = new DiscountRequirement
+                    {
+                        DiscountId = discount.Id,
+                        DiscountRequirementRuleSystemName = DiscountRequirementDefaults.SystemName
+                    };
 
-                _settingService.SetSetting(string.Format("DiscountRequirement.MustBeAssignedToCustomerRole-{0}", discountRequirement.Id), customerRoleId);
+                    _discountService.InsertDiscountRequirement(discountRequirement);
+                }
+
+                //save restricted customer role identifier
+                _settingService.SetSetting(string.Format(DiscountRequirementDefaults.SettingsKey, discountRequirement.Id), model.CustomerRoleId);
+
+                return Ok(new { NewRequirementId = discountRequirement.Id });
             }
-            return Json(new { Result = true, NewRequirementId = discountRequirement.Id }, JsonRequestBehavior.AllowGet);
+
+            return BadRequest(new { Errors = GetErrorsFromModelState(ModelState) });
         }
+
+        #endregion
+
+        #region Utilities
+
+        private IEnumerable<string> GetErrorsFromModelState(ModelStateDictionary modelState)
+        {
+            return ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage));
+        }
+
+        #endregion
     }
 }

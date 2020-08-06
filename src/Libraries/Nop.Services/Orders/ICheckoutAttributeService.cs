@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Nop.Core.Domain.Orders;
 
 namespace Nop.Services.Orders
@@ -17,10 +17,16 @@ namespace Nop.Services.Orders
         void DeleteCheckoutAttribute(CheckoutAttribute checkoutAttribute);
 
         /// <summary>
+        /// Deletes checkout attributes
+        /// </summary>
+        /// <param name="checkoutAttributes">Checkout attributes</param>
+        void DeleteCheckoutAttributes(IList<CheckoutAttribute> checkoutAttributes);
+
+        /// <summary>
         /// Gets all checkout attributes
         /// </summary>
         /// <param name="storeId">Store identifier</param>
-        /// <param name="excludeShippableAttributes">A value indicating whether we should exlude shippable attributes</param>
+        /// <param name="excludeShippableAttributes">A value indicating whether we should exclude shippable attributes</param>
         /// <returns>Checkout attributes</returns>
         IList<CheckoutAttribute> GetAllCheckoutAttributes(int storeId = 0, bool excludeShippableAttributes = false);
 
@@ -30,6 +36,13 @@ namespace Nop.Services.Orders
         /// <param name="checkoutAttributeId">Checkout attribute identifier</param>
         /// <returns>Checkout attribute</returns>
         CheckoutAttribute GetCheckoutAttributeById(int checkoutAttributeId);
+
+        /// <summary>
+        /// Gets checkout attributes 
+        /// </summary>
+        /// <param name="checkoutAttributeIds">Checkout attribute identifiers</param>
+        /// <returns>Checkout attributes</returns>
+        IList<CheckoutAttribute> GetCheckoutAttributeByIds(int[] checkoutAttributeIds);
 
         /// <summary>
         /// Inserts a checkout attribute

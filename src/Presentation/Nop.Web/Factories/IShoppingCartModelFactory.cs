@@ -11,6 +11,14 @@ namespace Nop.Web.Factories
     public partial interface IShoppingCartModelFactory
     {
         /// <summary>
+        /// Prepare the estimate shipping model
+        /// </summary>
+        /// <param name="cart">List of the shopping cart item</param>
+        /// <param name="setEstimateShippingDefaultAddress">Whether to use customer default shipping address for estimating</param>
+        /// <returns>Estimate shipping model</returns>
+        EstimateShippingModel PrepareEstimateShippingModel(IList<ShoppingCartItem> cart, bool setEstimateShippingDefaultAddress = true);
+
+        /// <summary>
         /// Prepare the cart item picture model
         /// </summary>
         /// <param name="sci">Shopping cart item</param>
@@ -27,14 +35,11 @@ namespace Nop.Web.Factories
         /// <param name="cart">List of the shopping cart item</param>
         /// <param name="isEditable">Whether model is editable</param>
         /// <param name="validateCheckoutAttributes">Whether to validate checkout attributes</param>
-        /// <param name="prepareEstimateShippingIfEnabled">Whether to prepare estimate shipping model</param>
-        /// <param name="setEstimateShippingDefaultAddress">Whether to use customer default shipping address for estimating</param>
         /// <param name="prepareAndDisplayOrderReviewData">Whether to prepare and display order review data</param>
         /// <returns>Shopping cart model</returns>
         ShoppingCartModel PrepareShoppingCartModel(ShoppingCartModel model,
             IList<ShoppingCartItem> cart, bool isEditable = true,
             bool validateCheckoutAttributes = false,
-            bool prepareEstimateShippingIfEnabled = true, bool setEstimateShippingDefaultAddress = true,
             bool prepareAndDisplayOrderReviewData = false);
 
         /// <summary>
@@ -53,6 +58,12 @@ namespace Nop.Web.Factories
         MiniShoppingCartModel PrepareMiniShoppingCartModel();
 
         /// <summary>
+        /// Prepare selected checkout attributes
+        /// </summary>
+        /// <returns>Formatted attributes</returns>
+        string FormatSelectedCheckoutAttributes();
+
+        /// <summary>
         /// Prepare the order totals model
         /// </summary>
         /// <param name="cart">List of the shopping cart item</param>
@@ -67,8 +78,9 @@ namespace Nop.Web.Factories
         /// <param name="countryId">Country identifier</param>
         /// <param name="stateProvinceId">State or province identifier</param>
         /// <param name="zipPostalCode">Zip postal code</param>
+        /// <param name="cacheOfferedShippingOptions">Indicates whether to cache offered shipping options</param>
         /// <returns>Estimate shipping result model</returns>
-        EstimateShippingResultModel PrepareEstimateShippingResultModel(IList<ShoppingCartItem> cart, int? countryId, int? stateProvinceId, string zipPostalCode);
+        EstimateShippingResultModel PrepareEstimateShippingResultModel(IList<ShoppingCartItem> cart, int? countryId, int? stateProvinceId, string zipPostalCode, bool cacheOfferedShippingOptions);
 
         /// <summary>
         /// Prepare the wishlist email a friend model

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Nop.Core.Domain.Localization;
 
 namespace Nop.Services.Localization
@@ -40,5 +40,12 @@ namespace Nop.Services.Localization
         /// </summary>
         /// <param name="language">Language</param>
         void UpdateLanguage(Language language);
+
+        /// <summary>
+        /// Get 2 letter ISO language code
+        /// </summary>
+        /// <param name="language">Language</param>
+        /// <returns>ISO language code</returns>
+        string GetTwoLetterIsoLanguageName(Language language);
     }
 }

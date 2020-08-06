@@ -1,3 +1,4 @@
+﻿using System;
 using System.Collections.Generic;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
@@ -15,7 +16,6 @@ namespace Nop.Services.Orders
         /// Checks order status
         /// </summary>
         /// <param name="order">Order</param>
-        /// <returns>Validated order</returns>
         void CheckOrderStatus(Order order);
 
         /// <summary>
@@ -36,7 +36,6 @@ namespace Nop.Services.Orders
         /// </summary>
         /// <param name="order">The order</param>
         void DeleteOrder(Order order);
-
 
         /// <summary>
         /// Process next recurring payment
@@ -68,8 +67,6 @@ namespace Nop.Services.Orders
         /// <returns>True if a customer can retry payment; otherwise false</returns>
         bool CanRetryLastRecurringPayment(Customer customer, RecurringPayment recurringPayment);
 
-
-
         /// <summary>
         /// Send a shipment
         /// </summary>
@@ -83,8 +80,6 @@ namespace Nop.Services.Orders
         /// <param name="shipment">Shipment</param>
         /// <param name="notifyCustomer">True to notify customer</param>
         void Deliver(Shipment shipment, bool notifyCustomer);
-
-
 
         /// <summary>
         /// Gets a value indicating whether cancel is allowed
@@ -100,8 +95,6 @@ namespace Nop.Services.Orders
         /// <param name="notifyCustomer">True to notify customer</param>
         void CancelOrder(Order order, bool notifyCustomer);
 
-
-
         /// <summary>
         /// Gets a value indicating whether order can be marked as authorized
         /// </summary>
@@ -114,8 +107,6 @@ namespace Nop.Services.Orders
         /// </summary>
         /// <param name="order">Order</param>
         void MarkAsAuthorized(Order order);
-
-
 
         /// <summary>
         /// Gets a value indicating whether capture from admin panel is allowed
@@ -143,8 +134,6 @@ namespace Nop.Services.Orders
         /// </summary>
         /// <param name="order">Order</param>
         void MarkOrderAsPaid(Order order);
-
-
 
         /// <summary>
         /// Gets a value indicating whether refund from admin panel is allowed
@@ -204,8 +193,6 @@ namespace Nop.Services.Orders
         /// <param name="amountToRefund">Amount to refund</param>
         void PartiallyRefundOffline(Order order, decimal amountToRefund);
 
-
-
         /// <summary>
         /// Gets a value indicating whether void from admin panel is allowed
         /// </summary>
@@ -233,9 +220,6 @@ namespace Nop.Services.Orders
         /// <param name="order">Order</param>
         void VoidOffline(Order order);
 
-
-
-
         /// <summary>
         /// Place order items in current user shopping cart.
         /// </summary>
@@ -249,17 +233,15 @@ namespace Nop.Services.Orders
         /// <returns>Result</returns>
         bool IsReturnRequestAllowed(Order order);
 
-
-
         /// <summary>
-        /// Valdiate minimum order sub-total amount
+        /// Validate minimum order sub-total amount
         /// </summary>
         /// <param name="cart">Shopping cart</param>
         /// <returns>true - OK; false - minimum order sub-total amount is not reached</returns>
         bool ValidateMinOrderSubtotalAmount(IList<ShoppingCartItem> cart);
 
         /// <summary>
-        /// Valdiate minimum order total amount
+        /// Validate minimum order total amount
         /// </summary>
         /// <param name="cart">Shopping cart</param>
         /// <returns>true - OK; false - minimum order total amount is not reached</returns>
@@ -272,5 +254,17 @@ namespace Nop.Services.Orders
         /// <param name="useRewardPoints">A value indicating reward points should be used; null to detect current choice of the customer</param>
         /// <returns>true - OK; false - minimum order total amount is not reached</returns>
         bool IsPaymentWorkflowRequired(IList<ShoppingCartItem> cart, bool? useRewardPoints = null);
+
+        /// <summary>
+        /// Gets the next payment date
+        /// </summary>
+        /// <param name="recurringPayment">Recurring payment</param>
+        DateTime? GetNextPaymentDate(RecurringPayment recurringPayment);
+
+        /// <summary>
+        /// Gets the cycles remaining
+        /// </summary>
+        /// <param name="recurringPayment">Recurring payment</param>
+        int GetCyclesRemaining(RecurringPayment recurringPayment);
     }
 }

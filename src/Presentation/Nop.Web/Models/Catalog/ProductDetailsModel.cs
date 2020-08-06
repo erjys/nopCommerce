@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Web.Mvc;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Orders;
-using Nop.Web.Framework;
-using Nop.Web.Framework.Mvc;
+using Nop.Web.Framework.Mvc.ModelBinding;
+using Nop.Web.Framework.Models;
 using Nop.Web.Models.Media;
+using Nop.Web.Models.ShoppingCart;
 
 namespace Nop.Web.Models.Catalog
 {
@@ -27,6 +29,7 @@ namespace Nop.Web.Models.Catalog
             ProductManufacturers = new List<ManufacturerBriefInfoModel>();
             ProductReviewOverview = new ProductReviewOverviewModel();
             TierPrices = new List<TierPriceModel>();
+            ProductEstimateShipping = new ProductEstimateShippingModel();
         }
 
         //picture(s)
@@ -65,10 +68,11 @@ namespace Nop.Web.Models.Catalog
         public bool FreeShippingNotificationEnabled { get; set; }
         public string DeliveryDate { get; set; }
 
-
         public bool IsRental { get; set; }
         public DateTime? RentalStartDate { get; set; }
         public DateTime? RentalEndDate { get; set; }
+
+        public DateTime? AvailableEndDate { get; set; }
 
         public ManageInventoryMethod ManageInventoryMethod { get; set; }
 
@@ -96,6 +100,8 @@ namespace Nop.Web.Models.Catalog
         public IList<ManufacturerBriefInfoModel> ProductManufacturers { get; set; }
 
         public ProductReviewOverviewModel ProductReviewOverview { get; set; }
+
+        public ProductEstimateShippingModel ProductEstimateShipping { get; set; }
 
         public IList<TierPriceModel> TierPrices { get; set; }
 
@@ -126,7 +132,7 @@ namespace Nop.Web.Models.Catalog
         {
             public AddToCartModel()
             {
-                this.AllowedQuantities = new List<SelectListItem>();
+                AllowedQuantities = new List<SelectListItem>();
             }
             public int ProductId { get; set; }
 
@@ -141,7 +147,7 @@ namespace Nop.Web.Models.Catalog
             public bool CustomerEntersPrice { get; set; }
             [NopResourceDisplayName("Products.EnterProductPrice")]
             public decimal CustomerEnteredPrice { get; set; }
-            public String CustomerEnteredPriceRange { get; set; }
+            public string CustomerEnteredPriceRange { get; set; }
 
             public bool DisableBuyButton { get; set; }
             public bool DisableWishlistButton { get; set; }
@@ -152,6 +158,7 @@ namespace Nop.Web.Models.Catalog
             //pre-order
             public bool AvailableForPreOrder { get; set; }
             public DateTime? PreOrderAvailabilityStartDateTimeUtc { get; set; }
+            public string PreOrderAvailabilityStartDateTimeUserTime { get; set; }
 
             //updating existing shopping cart or wishlist item?
             public int UpdatedShoppingCartItemId { get; set; }
@@ -198,19 +205,20 @@ namespace Nop.Web.Models.Catalog
             public bool IsGiftCard { get; set; }
 
             [NopResourceDisplayName("Products.GiftCard.RecipientName")]
-            [AllowHtml]
             public string RecipientName { get; set; }
+
             [NopResourceDisplayName("Products.GiftCard.RecipientEmail")]
-            [AllowHtml]
+            [DataType(DataType.EmailAddress)]
             public string RecipientEmail { get; set; }
+
             [NopResourceDisplayName("Products.GiftCard.SenderName")]
-            [AllowHtml]
             public string SenderName { get; set; }
+
             [NopResourceDisplayName("Products.GiftCard.SenderEmail")]
-            [AllowHtml]
+            [DataType(DataType.EmailAddress)]
             public string SenderEmail { get; set; }
+
             [NopResourceDisplayName("Products.GiftCard.Message")]
-            [AllowHtml]
             public string Message { get; set; }
 
             public GiftCardType GiftCardType { get; set; }
@@ -273,7 +281,6 @@ namespace Nop.Web.Models.Catalog
             public AttributeControlType AttributeControlType { get; set; }
 
             public IList<ProductAttributeValueModel> Values { get; set; }
-
         }
 
         public partial class ProductAttributeValueModel : BaseNopEntityModel
@@ -291,6 +298,8 @@ namespace Nop.Web.Models.Catalog
             public PictureModel ImageSquaresPictureModel { get; set; }
 
             public string PriceAdjustment { get; set; }
+            
+            public bool PriceAdjustmentUsePercentage { get; set; }
 
             public decimal PriceAdjustmentValue { get; set; }
 
@@ -304,6 +313,11 @@ namespace Nop.Web.Models.Catalog
             public int Quantity { get; set; }
         }
 
-		#endregion
+        public partial class ProductEstimateShippingModel : EstimateShippingModel
+        {
+            public int ProductId { get; set; }
+        }
+
+        #endregion
     }
 }

@@ -1,6 +1,11 @@
-﻿using Nop.Services.Localization;
+﻿using Moq;
+using Nop.Core;
+using Nop.Core.Infrastructure;
+using Nop.Data;
+using Nop.Services.Localization;
+using Nop.Tests;
+using Nop.Web.Areas.Admin.Validators.Common;
 using NUnit.Framework;
-using Rhino.Mocks;
 
 namespace Nop.Web.MVC.Tests.Public.Validators
 {
@@ -8,13 +13,19 @@ namespace Nop.Web.MVC.Tests.Public.Validators
     public abstract class BaseValidatorTests
     {
         protected ILocalizationService _localizationService;
+        private Mock<INopDataProvider> _dataProvider;
+        protected Mock<IWorkContext> _workContext;
         
         [SetUp]
         public void Setup()
         {
-            //set up localziation service used by almost all validators
-            _localizationService = MockRepository.GenerateMock<ILocalizationService>();
-            _localizationService.Expect(l => l.GetResource("")).Return("Invalid").IgnoreArguments();
+            var nopEngine = new Mock<NopEngine>();
+            var serviceProvider = new TestServiceProvider();
+            nopEngine.Setup(x => x.ServiceProvider).Returns(serviceProvider);
+            _dataProvider = new Mock<INopDataProvider>();
+            _localizationService = serviceProvider.LocalizationService.Object;
+            nopEngine.Setup(x => x.ResolveUnregistered(typeof(AddressValidator))).Returns(new AddressValidator(_localizationService, _dataProvider.Object));
+            EngineContext.Replace(nopEngine.Object);
         }
     }
 }

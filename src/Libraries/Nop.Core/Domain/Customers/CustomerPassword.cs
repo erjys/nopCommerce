@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace Nop.Core.Domain.Customers
 {
@@ -9,7 +9,7 @@ namespace Nop.Core.Domain.Customers
     {
         public CustomerPassword()
         {
-            this.PasswordFormat = PasswordFormat.Clear;
+            PasswordFormat = PasswordFormat.Clear;
         }
 
         /// <summary>
@@ -42,13 +42,8 @@ namespace Nop.Core.Domain.Customers
         /// </summary>
         public PasswordFormat PasswordFormat
         {
-            get { return (PasswordFormat)PasswordFormatId; }
-            set { this.PasswordFormatId = (int)value; }
+            get => (PasswordFormat)PasswordFormatId;
+            set => PasswordFormatId = (int)value;
         }
-
-        /// <summary>
-        /// Gets or sets the customer
-        /// </summary>
-        public virtual Customer Customer { get; set; }
     }
 }

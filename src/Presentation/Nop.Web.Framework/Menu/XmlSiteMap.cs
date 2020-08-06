@@ -3,51 +3,64 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Web.Routing;
+using System.Text;
 using System.Xml;
-using Nop.Core;
+using Microsoft.AspNetCore.Routing;
 using Nop.Core.Infrastructure;
 using Nop.Services.Localization;
 using Nop.Services.Security;
 
 namespace Nop.Web.Framework.Menu
 {
+    /// <summary>
+    /// XML sitemap
+    /// </summary>
     public class XmlSiteMap
     {
+        /// <summary>
+        /// Ctor
+        /// </summary>
         public XmlSiteMap()
         {
             RootNode = new SiteMapNode();
         }
 
+        /// <summary>
+        /// Root node
+        /// </summary>
         public SiteMapNode RootNode { get; set; }
 
+        /// <summary>
+        /// Load sitemap
+        /// </summary>
+        /// <param name="physicalPath">Filepath to load a sitemap</param>
         public virtual void LoadFrom(string physicalPath)
         {
-            string filePath = CommonHelper.MapPath(physicalPath);
-            string content = File.ReadAllText(filePath);
+            var fileProvider = EngineContext.Current.Resolve<INopFileProvider>();
+
+            var filePath = fileProvider.MapPath(physicalPath);
+            var content = fileProvider.ReadAllText(filePath, Encoding.UTF8);
 
             if (!string.IsNullOrEmpty(content))
             {
+                var doc = new XmlDocument();
                 using (var sr = new StringReader(content))
                 {
-                    using (var xr = XmlReader.Create(sr,
-                            new XmlReaderSettings
-                            {
-                                CloseInput = true,
-                                IgnoreWhitespace = true,
-                                IgnoreComments = true,
-                                IgnoreProcessingInstructions = true
-                            }))
-                    {
-                        var doc = new XmlDocument();
-                        doc.Load(xr);
-
-                        if ((doc.DocumentElement != null) && doc.HasChildNodes)
+                    using var xr = XmlReader.Create(sr,
+                        new XmlReaderSettings
                         {
-                            XmlNode xmlRootNode = doc.DocumentElement.FirstChild;
-                            Iterate(RootNode, xmlRootNode);
-                        }
-                    }
+                            CloseInput = true,
+                            IgnoreWhitespace = true,
+                            IgnoreComments = true,
+                            IgnoreProcessingInstructions = true
+                        });
+
+                    doc.Load(xr);
+                }
+                if ((doc.DocumentElement != null) && doc.HasChildNodes)
+                {
+                    var xmlRootNode = doc.DocumentElement.FirstChild;
+                    Iterate(RootNode, xmlRootNode);
                 }
             }
         }
@@ -79,16 +92,16 @@ namespace Nop.Web.Framework.Menu
             siteMapNode.Title = localizationService.GetResource(nopResource);
 
             //routes, url
-            string controllerName = GetStringValueFromAttribute(xmlNode, "controller");
-            string actionName = GetStringValueFromAttribute(xmlNode, "action");
-            string url = GetStringValueFromAttribute(xmlNode, "url");
+            var controllerName = GetStringValueFromAttribute(xmlNode, "controller");
+            var actionName = GetStringValueFromAttribute(xmlNode, "action");
+            var url = GetStringValueFromAttribute(xmlNode, "url");
             if (!string.IsNullOrEmpty(controllerName) && !string.IsNullOrEmpty(actionName))
             {
                 siteMapNode.ControllerName = controllerName;
                 siteMapNode.ActionName = actionName;
 
-                //apply admin area as described here - http://www.nopcommerce.com/boards/t/20478/broken-menus-in-admin-area-whilst-trying-to-make-a-plugin-admin-page.aspx
-                siteMapNode.RouteValues = new RouteValueDictionary { { "area", "Admin" } };
+                //apply admin area as described here - https://www.nopcommerce.com/boards/topic/20478/broken-menus-in-admin-area-whilst-trying-to-make-a-plugin-admin-page
+                siteMapNode.RouteValues = new RouteValueDictionary { { "area", AreaNames.Admin } };
             }
             else if (!string.IsNullOrEmpty(url))
             {
@@ -113,8 +126,7 @@ namespace Nop.Web.Framework.Menu
 
             // Open URL in new tab
             var openUrlInNewTabValue = GetStringValueFromAttribute(xmlNode, "OpenUrlInNewTab");
-            bool booleanResult;
-            if (!string.IsNullOrWhiteSpace(openUrlInNewTabValue) && bool.TryParse(openUrlInNewTabValue, out booleanResult))
+            if (!string.IsNullOrWhiteSpace(openUrlInNewTabValue) && bool.TryParse(openUrlInNewTabValue, out var booleanResult))
             {
                 siteMapNode.OpenUrlInNewTab = booleanResult;
             }
@@ -126,7 +138,7 @@ namespace Nop.Web.Framework.Menu
 
             if (node.Attributes != null && node.Attributes.Count > 0)
             {
-                XmlAttribute attribute = node.Attributes[attributeName];
+                var attribute = node.Attributes[attributeName];
 
                 if (attribute != null)
                 {

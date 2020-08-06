@@ -1,12 +1,15 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using Nop.Core;
 using Nop.Core.Caching;
-using Nop.Core.Data;
 using Nop.Core.Domain.Localization;
+using Nop.Data;
+using Nop.Services.Caching;
+using Nop.Services.Caching.Extensions;
+using Nop.Services.Events;
 
 namespace Nop.Services.Localization
 {
@@ -15,52 +18,29 @@ namespace Nop.Services.Localization
     /// </summary>
     public partial class LocalizedEntityService : ILocalizedEntityService
     {
-        #region Constants
-
-        /// <summary>
-        /// Key for caching
-        /// </summary>
-        /// <remarks>
-        /// {0} : language ID
-        /// {1} : entity ID
-        /// {2} : locale key group
-        /// {3} : locale key
-        /// </remarks>
-        private const string LOCALIZEDPROPERTY_KEY = "Nop.localizedproperty.value-{0}-{1}-{2}-{3}";
-        /// <summary>
-        /// Key for caching
-        /// </summary>
-        private const string LOCALIZEDPROPERTY_ALL_KEY = "Nop.localizedproperty.all";
-        /// <summary>
-        /// Key pattern to clear cache
-        /// </summary>
-        private const string LOCALIZEDPROPERTY_PATTERN_KEY = "Nop.localizedproperty.";
-
-        #endregion
-
         #region Fields
 
+        private readonly ICacheKeyService _cacheKeyService;
+        private readonly IEventPublisher _eventPublisher;
         private readonly IRepository<LocalizedProperty> _localizedPropertyRepository;
-        private readonly ICacheManager _cacheManager;
+        private readonly IStaticCacheManager _staticCacheManager;
         private readonly LocalizationSettings _localizationSettings;
 
         #endregion
 
         #region Ctor
 
-        /// <summary>
-        /// Ctor
-        /// </summary>
-        /// <param name="cacheManager">Cache manager</param>
-        /// <param name="localizedPropertyRepository">Localized property repository</param>
-        /// <param name="localizationSettings">Localization settings</param>
-        public LocalizedEntityService(ICacheManager cacheManager,
+        public LocalizedEntityService(ICacheKeyService cacheKeyService,
+            IEventPublisher eventPublisher,
             IRepository<LocalizedProperty> localizedPropertyRepository,
+            IStaticCacheManager staticCacheManager,
             LocalizationSettings localizationSettings)
         {
-            this._cacheManager = cacheManager;
-            this._localizedPropertyRepository = localizedPropertyRepository;
-            this._localizationSettings = localizationSettings;
+            _cacheKeyService = cacheKeyService;
+            _eventPublisher = eventPublisher;
+            _localizedPropertyRepository = localizedPropertyRepository;
+            _staticCacheManager = staticCacheManager;
+            _localizationSettings = localizationSettings;
         }
 
         #endregion
@@ -83,7 +63,9 @@ namespace Nop.Services.Localization
                         where lp.EntityId == entityId &&
                               lp.LocaleKeyGroup == localeKeyGroup
                         select lp;
+
             var props = query.ToList();
+
             return props;
         }
 
@@ -91,50 +73,16 @@ namespace Nop.Services.Localization
         /// Gets all cached localized properties
         /// </summary>
         /// <returns>Cached localized properties</returns>
-        protected virtual IList<LocalizedPropertyForCaching> GetAllLocalizedPropertiesCached()
+        protected virtual IList<LocalizedProperty> GetAllLocalizedProperties()
         {
-            //cache
-            string key = string.Format(LOCALIZEDPROPERTY_ALL_KEY);
-            return _cacheManager.Get(key, () =>
-            {
-                var query = from lp in _localizedPropertyRepository.Table
-                            select lp;
-                var localizedProperties = query.ToList();
-                var list = new List<LocalizedPropertyForCaching>();
-                foreach (var lp in localizedProperties)
-                {
-                    var localizedPropertyForCaching = new LocalizedPropertyForCaching
-                    {
-                        Id = lp.Id,
-                        EntityId = lp.EntityId,
-                        LanguageId = lp.LanguageId,
-                        LocaleKeyGroup = lp.LocaleKeyGroup,
-                        LocaleKey = lp.LocaleKey,
-                        LocaleValue = lp.LocaleValue
-                    };
-                    list.Add(localizedPropertyForCaching);
-                }
-                return list;
-            });
+            var query = from lp in _localizedPropertyRepository.Table
+                select lp;
+
+            return query.ToCachedList(_cacheKeyService.PrepareKeyForDefaultCache(NopLocalizationDefaults.LocalizedPropertyAllCacheKey));
         }
 
         #endregion
-
-        #region Nested classes
-
-        [Serializable]
-        public class LocalizedPropertyForCaching
-        {
-            public int Id { get; set; }
-            public int EntityId { get; set; }
-            public int LanguageId { get; set; }
-            public string LocaleKeyGroup { get; set; }
-            public string LocaleKey { get; set; }
-            public string LocaleValue { get; set; }
-        }
-
-        #endregion
-
+        
         #region Methods
 
         /// <summary>
@@ -144,12 +92,12 @@ namespace Nop.Services.Localization
         public virtual void DeleteLocalizedProperty(LocalizedProperty localizedProperty)
         {
             if (localizedProperty == null)
-                throw new ArgumentNullException("localizedProperty");
+                throw new ArgumentNullException(nameof(localizedProperty));
 
             _localizedPropertyRepository.Delete(localizedProperty);
 
-            //cache
-            _cacheManager.RemoveByPattern(LOCALIZEDPROPERTY_PATTERN_KEY);
+            //event notification
+            _eventPublisher.EntityDeleted(localizedProperty);
         }
 
         /// <summary>
@@ -175,47 +123,29 @@ namespace Nop.Services.Localization
         /// <returns>Found localized value</returns>
         public virtual string GetLocalizedValue(int languageId, int entityId, string localeKeyGroup, string localeKey)
         {
-            if (_localizationSettings.LoadAllLocalizedPropertiesOnStartup)
-            {
-                string key = string.Format(LOCALIZEDPROPERTY_KEY, languageId, entityId, localeKeyGroup, localeKey);
-                return _cacheManager.Get(key, () =>
-                {
-                    //load all records (we know they are cached)
-                    var source = GetAllLocalizedPropertiesCached();
-                    var query = from lp in source
-                                where lp.LanguageId == languageId &&
-                                lp.EntityId == entityId &&
-                                lp.LocaleKeyGroup == localeKeyGroup &&
-                                lp.LocaleKey == localeKey
-                                select lp.LocaleValue;
-                    var localeValue = query.FirstOrDefault();
-                    //little hack here. nulls aren't cacheable so set it to ""
-                    if (localeValue == null)
-                        localeValue = "";
-                    return localeValue;
-                });
+            var key = _cacheKeyService.PrepareKeyForDefaultCache(NopLocalizationDefaults.LocalizedPropertyCacheKey
+                , languageId, entityId, localeKeyGroup, localeKey);
 
-            }
-            else
+            return _staticCacheManager.Get(key, () =>
             {
-                //gradual loading
-                string key = string.Format(LOCALIZEDPROPERTY_KEY, languageId, entityId, localeKeyGroup, localeKey);
-                return _cacheManager.Get(key, () =>
-                {
-                    var source = _localizedPropertyRepository.Table;
-                    var query = from lp in source
-                                where lp.LanguageId == languageId &&
-                                lp.EntityId == entityId &&
-                                lp.LocaleKeyGroup == localeKeyGroup &&
-                                lp.LocaleKey == localeKey
-                                select lp.LocaleValue;
-                    var localeValue = query.FirstOrDefault();
-                    //little hack here. nulls aren't cacheable so set it to ""
-                    if (localeValue == null)
-                        localeValue = "";
-                    return localeValue;
-                });
-            }
+                var source = _localizationSettings.LoadAllLocalizedPropertiesOnStartup
+                    //load all records (we know they are cached)
+                    ? GetAllLocalizedProperties().AsQueryable()
+                    //gradual loading
+                    : _localizedPropertyRepository.Table;
+
+                var query = from lp in source
+                    where lp.LanguageId == languageId &&
+                          lp.EntityId == entityId &&
+                          lp.LocaleKeyGroup == localeKeyGroup &&
+                          lp.LocaleKey == localeKey
+                    select lp.LocaleValue;
+
+                //little hack here. nulls aren't cacheable so set it to ""
+                var localeValue = query.FirstOrDefault() ?? string.Empty;
+
+                return localeValue;
+            });
         }
 
         /// <summary>
@@ -225,12 +155,12 @@ namespace Nop.Services.Localization
         public virtual void InsertLocalizedProperty(LocalizedProperty localizedProperty)
         {
             if (localizedProperty == null)
-                throw new ArgumentNullException("localizedProperty");
+                throw new ArgumentNullException(nameof(localizedProperty));
 
             _localizedPropertyRepository.Insert(localizedProperty);
 
-            //cache
-            _cacheManager.RemoveByPattern(LOCALIZEDPROPERTY_PATTERN_KEY);
+            //event notification
+            _eventPublisher.EntityInserted(localizedProperty);
         }
 
         /// <summary>
@@ -240,12 +170,12 @@ namespace Nop.Services.Localization
         public virtual void UpdateLocalizedProperty(LocalizedProperty localizedProperty)
         {
             if (localizedProperty == null)
-                throw new ArgumentNullException("localizedProperty");
+                throw new ArgumentNullException(nameof(localizedProperty));
 
             _localizedPropertyRepository.Update(localizedProperty);
 
-            //cache
-            _cacheManager.RemoveByPattern(LOCALIZEDPROPERTY_PATTERN_KEY);
+            //event notification
+            _eventPublisher.EntityUpdated(localizedProperty);
         }
 
         /// <summary>
@@ -264,19 +194,27 @@ namespace Nop.Services.Localization
             SaveLocalizedValue<T, string>(entity, keySelector, localeValue, languageId);
         }
 
+        /// <summary>
+        /// Save localized value
+        /// </summary>
+        /// <typeparam name="T">Type</typeparam>
+        /// <typeparam name="TPropType">Property type</typeparam>
+        /// <param name="entity">Entity</param>
+        /// <param name="keySelector">Key selector</param>
+        /// <param name="localeValue">Locale value</param>
+        /// <param name="languageId">Language ID</param>
         public virtual void SaveLocalizedValue<T, TPropType>(T entity,
             Expression<Func<T, TPropType>> keySelector,
             TPropType localeValue,
             int languageId) where T : BaseEntity, ILocalizedEntity
         {
             if (entity == null)
-                throw new ArgumentNullException("entity");
+                throw new ArgumentNullException(nameof(entity));
 
             if (languageId == 0)
-                throw new ArgumentOutOfRangeException("languageId", "Language ID should not be 0");
+                throw new ArgumentOutOfRangeException(nameof(languageId), "Language ID should not be 0");
 
-            var member = keySelector.Body as MemberExpression;
-            if (member == null)
+            if (!(keySelector.Body is MemberExpression member))
             {
                 throw new ArgumentException(string.Format(
                     "Expression '{0}' refers to a method, not a property.",
@@ -291,15 +229,16 @@ namespace Nop.Services.Localization
                        keySelector));
             }
 
-            string localeKeyGroup = typeof(T).Name;
-            string localeKey = propInfo.Name;
+            //load localized value (check whether it's a cacheable entity. In such cases we load its original entity type)
+            var localeKeyGroup = entity.GetType().Name;
+            var localeKey = propInfo.Name;
 
             var props = GetLocalizedProperties(entity.Id, localeKeyGroup);
             var prop = props.FirstOrDefault(lp => lp.LanguageId == languageId &&
                 lp.LocaleKey.Equals(localeKey, StringComparison.InvariantCultureIgnoreCase)); //should be culture invariant
 
             var localeValueStr = CommonHelper.To<string>(localeValue);
-            
+
             if (prop != null)
             {
                 if (string.IsNullOrWhiteSpace(localeValueStr))
@@ -316,19 +255,19 @@ namespace Nop.Services.Localization
             }
             else
             {
-                if (!string.IsNullOrWhiteSpace(localeValueStr))
+                if (string.IsNullOrWhiteSpace(localeValueStr))
+                    return;
+
+                //insert
+                prop = new LocalizedProperty
                 {
-                    //insert
-                    prop = new LocalizedProperty
-                    {
-                        EntityId = entity.Id,
-                        LanguageId = languageId,
-                        LocaleKey = localeKey,
-                        LocaleKeyGroup = localeKeyGroup,
-                        LocaleValue = localeValueStr
-                    };
-                    InsertLocalizedProperty(prop);
-                }
+                    EntityId = entity.Id,
+                    LanguageId = languageId,
+                    LocaleKey = localeKey,
+                    LocaleKeyGroup = localeKeyGroup,
+                    LocaleValue = localeValueStr
+                };
+                InsertLocalizedProperty(prop);
             }
         }
 

@@ -1,75 +1,90 @@
-﻿using System.Web.Routing;
-using Nop.Web.Framework.Localization;
-using Nop.Web.Framework.Mvc.Routes;
-using Nop.Web.Framework.Seo;
+﻿using System.Linq;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Nop.Core.Domain.Localization;
+using Nop.Data;
+using Nop.Services.Localization;
+using Nop.Web.Framework.Mvc.Routing;
 
 namespace Nop.Web.Infrastructure
 {
+    /// <summary>
+    /// Represents provider that provided generic routes
+    /// </summary>
     public partial class GenericUrlRouteProvider : IRouteProvider
     {
-        public void RegisterRoutes(RouteCollection routes)
+        #region Methods
+
+        /// <summary>
+        /// Register routes
+        /// </summary>
+        /// <param name="endpointRouteBuilder">Route builder</param>
+        public void RegisterRoutes(IEndpointRouteBuilder endpointRouteBuilder)
         {
+            var pattern = "{SeName}";
+            if (DataSettingsManager.DatabaseIsInstalled)
+            {
+                var localizationSettings = endpointRouteBuilder.ServiceProvider.GetRequiredService<LocalizationSettings>();
+                if (localizationSettings.SeoFriendlyUrlsForLanguagesEnabled)
+                {
+                    var langservice = endpointRouteBuilder.ServiceProvider.GetRequiredService<ILanguageService>();
+                    var languages = langservice.GetAllLanguages().ToList();
+                    pattern = "{language:lang=" + languages.FirstOrDefault().UniqueSeoCode + "}/{SeName}";
+                }
+            }
+            endpointRouteBuilder.MapDynamicControllerRoute<SlugRouteTransformer>(pattern);
+
+            //and default one
+            endpointRouteBuilder.MapControllerRoute(
+                name: "Default",
+                pattern: "{controller=Home}/{action=Index}/{id?}");
+
             //generic URLs
-            routes.MapGenericPathRoute("GenericUrl",
-                                       "{generic_se_name}",
-                                       new {controller = "Common", action = "GenericUrl"},
-                                       new[] {"Nop.Web.Controllers"});
+            endpointRouteBuilder.MapControllerRoute(
+                name: "GenericUrl",
+                pattern: "{GenericSeName}",
+                new { controller = "Common", action = "GenericUrl" });
 
             //define this routes to use in UI views (in case if you want to customize some of them later)
-            routes.MapLocalizedRoute("Product",
-                                     "{SeName}",
-                                     new { controller = "Product", action = "ProductDetails" },
-                                     new[] {"Nop.Web.Controllers"});
+            endpointRouteBuilder.MapControllerRoute("Product", pattern, 
+                new { controller = "Product", action = "ProductDetails" });
 
-            routes.MapLocalizedRoute("Category",
-                            "{SeName}",
-                            new { controller = "Catalog", action = "Category" },
-                            new[] { "Nop.Web.Controllers" });
+            endpointRouteBuilder.MapControllerRoute("Category", pattern, 
+                new { controller = "Catalog", action = "Category" });
 
-            routes.MapLocalizedRoute("Manufacturer",
-                            "{SeName}",
-                            new { controller = "Catalog", action = "Manufacturer" },
-                            new[] { "Nop.Web.Controllers" });
+            endpointRouteBuilder.MapControllerRoute("Manufacturer", pattern, 
+                new { controller = "Catalog", action = "Manufacturer" });
 
-            routes.MapLocalizedRoute("Vendor",
-                            "{SeName}",
-                            new { controller = "Catalog", action = "Vendor" },
-                            new[] { "Nop.Web.Controllers" });
+            endpointRouteBuilder.MapControllerRoute("Vendor", pattern, 
+                new { controller = "Catalog", action = "Vendor" });
             
-            routes.MapLocalizedRoute("NewsItem",
-                            "{SeName}",
-                            new { controller = "News", action = "NewsItem" },
-                            new[] { "Nop.Web.Controllers" });
+            endpointRouteBuilder.MapControllerRoute("NewsItem", pattern, 
+                new { controller = "News", action = "NewsItem" });
 
-            routes.MapLocalizedRoute("BlogPost",
-                            "{SeName}",
-                            new { controller = "Blog", action = "BlogPost" },
-                            new[] { "Nop.Web.Controllers" });
+            endpointRouteBuilder.MapControllerRoute("BlogPost", pattern, 
+                new { controller = "Blog", action = "BlogPost" });
 
-            routes.MapLocalizedRoute("Topic",
-                            "{SeName}",
-                            new { controller = "Topic", action = "TopicDetails" },
-                            new[] { "Nop.Web.Controllers" });
+            endpointRouteBuilder.MapControllerRoute("Topic", pattern, 
+                new { controller = "Topic", action = "TopicDetails" });
 
-
-
-            //the last route. it's used when none of registered routes could be used for the current request
-            //but in this case we cannot process non-registered routes (/controller/action)
-            //routes.MapLocalizedRoute(
-            //    "PageNotFound-Wildchar",
-            //    "{*url}",
-            //    new { controller = "Common", action = "PageNotFound" },
-            //    new[] { "Nop.Web.Controllers" });
+            //product tags
+            endpointRouteBuilder.MapControllerRoute("ProductsByTag", pattern,
+                new { controller = "Catalog", action = "ProductsByTag" });
         }
 
-        public int Priority
-        {
-            get
-            {
-                //it should be the last route
-                //we do not set it to -int.MaxValue so it could be overridden (if required)
-                return -1000000;
-            }
-        }
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Gets a priority of route provider
+        /// </summary>
+        /// <remarks>
+        /// it should be the last route. we do not set it to -int.MaxValue so it could be overridden (if required)
+        /// </remarks>
+        public int Priority => -1000000;
+
+        #endregion
     }
 }

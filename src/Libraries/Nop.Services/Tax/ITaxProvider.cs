@@ -1,5 +1,4 @@
-using System.Web.Routing;
-using Nop.Core.Plugins;
+﻿using Nop.Services.Plugins;
 
 namespace Nop.Services.Tax
 {
@@ -11,16 +10,15 @@ namespace Nop.Services.Tax
         /// <summary>
         /// Gets tax rate
         /// </summary>
-        /// <param name="calculateTaxRequest">Tax calculation request</param>
+        /// <param name="taxRateRequest">Tax rate request</param>
         /// <returns>Tax</returns>
-        CalculateTaxResult GetTaxRate(CalculateTaxRequest calculateTaxRequest);
+        TaxRateResult GetTaxRate(TaxRateRequest taxRateRequest);
 
         /// <summary>
-        /// Gets a route for provider configuration
+        /// Gets tax total
         /// </summary>
-        /// <param name="actionName">Action name</param>
-        /// <param name="controllerName">Controller name</param>
-        /// <param name="routeValues">Route values</param>
-        void GetConfigurationRoute(out string actionName, out string controllerName, out RouteValueDictionary routeValues);
+        /// <param name="taxTotalRequest">Tax total request</param>
+        /// <returns>Tax total</returns>
+        TaxTotalResult GetTaxTotal(TaxTotalRequest taxTotalRequest);
     }
 }

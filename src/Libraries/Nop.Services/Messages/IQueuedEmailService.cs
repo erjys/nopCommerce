@@ -5,6 +5,9 @@ using Nop.Core.Domain.Messages;
 
 namespace Nop.Services.Messages
 {
+    /// <summary>
+    /// Queued email service
+    /// </summary>
     public partial interface IQueuedEmailService
     {
         /// <summary>
@@ -63,6 +66,14 @@ namespace Nop.Services.Messages
             string toEmail, DateTime? createdFromUtc, DateTime? createdToUtc, 
             bool loadNotSentItemsOnly, bool loadOnlyItemsToBeSent, int maxSendTries,
             bool loadNewest, int pageIndex = 0, int pageSize = int.MaxValue);
+
+        /// <summary>
+        /// Deletes already sent emails
+        /// </summary>
+        /// <param name="createdFromUtc">Created date from (UTC); null to load all records</param>
+        /// <param name="createdToUtc">Created date to (UTC); null to load all records</param>
+        /// <returns>Number of deleted emails</returns>
+        int DeleteAlreadySentEmails(DateTime? createdFromUtc, DateTime? createdToUtc);
 
         /// <summary>
         /// Delete all queued emails

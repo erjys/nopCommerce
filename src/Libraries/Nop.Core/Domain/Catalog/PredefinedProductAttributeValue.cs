@@ -1,4 +1,4 @@
-using Nop.Core.Domain.Localization;
+﻿using Nop.Core.Domain.Localization;
 
 namespace Nop.Core.Domain.Catalog
 {
@@ -23,12 +23,17 @@ namespace Nop.Core.Domain.Catalog
         public decimal PriceAdjustment { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether "price adjustment" is specified as percentage
+        /// </summary>
+        public bool PriceAdjustmentUsePercentage { get; set; }
+
+        /// <summary>
         /// Gets or sets the weight adjustment
         /// </summary>
         public decimal WeightAdjustment { get; set; }
 
         /// <summary>
-        /// Gets or sets the attibute value cost
+        /// Gets or sets the attribute value cost
         /// </summary>
         public decimal Cost { get; set; }
 
@@ -41,10 +46,5 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets the display order
         /// </summary>
         public int DisplayOrder { get; set; }
-
-        /// <summary>
-        /// Gets the product attribute
-        /// </summary>
-        public virtual ProductAttribute ProductAttribute { get; set; }
     }
 }

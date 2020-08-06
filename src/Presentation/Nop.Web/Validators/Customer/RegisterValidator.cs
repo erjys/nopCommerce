@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using FluentValidation;
-using FluentValidation.Results;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
 using Nop.Services.Directory;
@@ -13,31 +12,38 @@ namespace Nop.Web.Validators.Customer
 {
     public partial class RegisterValidator : BaseNopValidator<RegisterModel>
     {
-        public RegisterValidator(ILocalizationService localizationService, 
+        public RegisterValidator(ILocalizationService localizationService,
             IStateProvinceService stateProvinceService,
             CustomerSettings customerSettings)
         {
             RuleFor(x => x.Email).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.Email.Required"));
             RuleFor(x => x.Email).EmailAddress().WithMessage(localizationService.GetResource("Common.WrongEmail"));
-            
+
             if (customerSettings.EnteringEmailTwice)
             {
                 RuleFor(x => x.ConfirmEmail).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.ConfirmEmail.Required"));
                 RuleFor(x => x.ConfirmEmail).EmailAddress().WithMessage(localizationService.GetResource("Common.WrongEmail"));
                 RuleFor(x => x.ConfirmEmail).Equal(x => x.Email).WithMessage(localizationService.GetResource("Account.Fields.Email.EnteredEmailsDoNotMatch"));
             }
-            
+
             if (customerSettings.UsernamesEnabled)
             {
                 RuleFor(x => x.Username).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.Username.Required"));
+                RuleFor(x => x.Username).IsUsername(customerSettings).WithMessage(localizationService.GetResource("Account.Fields.Username.NotValid"));
             }
-            
-            RuleFor(x => x.FirstName).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.FirstName.Required"));
-            RuleFor(x => x.LastName).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.LastName.Required"));
 
+            if (customerSettings.FirstNameEnabled && customerSettings.FirstNameRequired)
+            {
+                RuleFor(x => x.FirstName).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.FirstName.Required"));
+            }
+            if (customerSettings.LastNameEnabled && customerSettings.LastNameRequired)
+            {
+                RuleFor(x => x.LastName).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.LastName.Required"));
+            }
 
-            RuleFor(x => x.Password).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.Password.Required"));
-            RuleFor(x => x.Password).Length(customerSettings.PasswordMinLength, 999).WithMessage(string.Format(localizationService.GetResource("Account.Fields.Password.LengthValidation"), customerSettings.PasswordMinLength));
+            //Password rule
+            RuleFor(x => x.Password).IsPassword(localizationService, customerSettings);
+
             RuleFor(x => x.ConfirmPassword).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.ConfirmPassword.Required"));
             RuleFor(x => x.ConfirmPassword).Equal(x => x.Password).WithMessage(localizationService.GetResource("Account.Fields.Password.EnteredPasswordsDoNotMatch"));
 
@@ -52,7 +58,7 @@ namespace Nop.Web.Validators.Customer
                 customerSettings.StateProvinceEnabled &&
                 customerSettings.StateProvinceRequired)
             {
-                Custom(x =>
+                RuleFor(x => x.StateProvinceId).Must((x, context) =>
                 {
                     //does selected country have states?
                     var hasStates = stateProvinceService.GetStateProvincesByCountryId(x.CountryId).Any();
@@ -60,31 +66,35 @@ namespace Nop.Web.Validators.Customer
                     {
                         //if yes, then ensure that a state is selected
                         if (x.StateProvinceId == 0)
-                        {
-                            return new ValidationFailure("StateProvinceId", localizationService.GetResource("Account.Fields.StateProvince.Required"));
-                        }
+                            return false;
                     }
-                    return null;
-                });
+
+                    return true;
+                }).WithMessage(localizationService.GetResource("Account.Fields.StateProvince.Required"));
             }
             if (customerSettings.DateOfBirthEnabled && customerSettings.DateOfBirthRequired)
             {
-                Custom(x =>
+                //entered?
+                RuleFor(x => x.DateOfBirthDay).Must((x, context) =>
                 {
                     var dateOfBirth = x.ParseDateOfBirth();
-                    //entered?
                     if (!dateOfBirth.HasValue)
-                    {
-                        return new ValidationFailure("DateOfBirthDay", localizationService.GetResource("Account.Fields.DateOfBirth.Required"));
-                    }
-                    //minimum age
-                    if (customerSettings.DateOfBirthMinimumAge.HasValue &&
-                        CommonHelper.GetDifferenceInYears(dateOfBirth.Value, DateTime.Today) < customerSettings.DateOfBirthMinimumAge.Value)
-                    {
-                        return new ValidationFailure("DateOfBirthDay", string.Format(localizationService.GetResource("Account.Fields.DateOfBirth.MinimumAge"), customerSettings.DateOfBirthMinimumAge.Value));
-                    }
-                    return null;
-                });
+                        return false;
+
+                    return true;
+                }).WithMessage(localizationService.GetResource("Account.Fields.DateOfBirth.Required"));
+
+                //minimum age
+                RuleFor(x => x.DateOfBirthDay).Must((x, context) =>
+                {
+                    var dateOfBirth = x.ParseDateOfBirth();
+                    if (dateOfBirth.HasValue && customerSettings.DateOfBirthMinimumAge.HasValue &&
+                        CommonHelper.GetDifferenceInYears(dateOfBirth.Value, DateTime.Today) <
+                        customerSettings.DateOfBirthMinimumAge.Value)
+                        return false;
+
+                    return true;
+                }).WithMessage(string.Format(localizationService.GetResource("Account.Fields.DateOfBirth.MinimumAge"), customerSettings.DateOfBirthMinimumAge));
             }
             if (customerSettings.CompanyRequired && customerSettings.CompanyEnabled)
             {
@@ -102,6 +112,10 @@ namespace Nop.Web.Validators.Customer
             {
                 RuleFor(x => x.ZipPostalCode).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.ZipPostalCode.Required"));
             }
+            if (customerSettings.CountyRequired && customerSettings.CountyEnabled)
+            {
+                RuleFor(x => x.County).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.County.Required"));
+            }
             if (customerSettings.CityRequired && customerSettings.CityEnabled)
             {
                 RuleFor(x => x.City).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.City.Required"));
@@ -109,6 +123,10 @@ namespace Nop.Web.Validators.Customer
             if (customerSettings.PhoneRequired && customerSettings.PhoneEnabled)
             {
                 RuleFor(x => x.Phone).NotEmpty().WithMessage(localizationService.GetResource("Account.Fields.Phone.Required"));
+            }
+            if (customerSettings.PhoneEnabled)
+            {
+                RuleFor(x => x.Phone).IsPhoneNumber(customerSettings).WithMessage(localizationService.GetResource("Account.Fields.Phone.NotValid"));
             }
             if (customerSettings.FaxRequired && customerSettings.FaxEnabled)
             {

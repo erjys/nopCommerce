@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using Nop.Core.Caching;
 
 namespace Nop.Core
 {
@@ -12,57 +13,20 @@ namespace Nop.Core
         /// </summary>
         public int Id { get; set; }
 
-        public override bool Equals(object obj)
+        /// <summary>
+        /// Get key for caching the entity
+        /// </summary>
+        public string EntityCacheKey => GetEntityCacheKey(GetType(), Id);
+
+        /// <summary>
+        /// Get key for caching the entity
+        /// </summary>
+        /// <param name="entityType">Entity type</param>
+        /// <param name="id">Entity id</param>
+        /// <returns>Key for caching the entity</returns>
+        public static string GetEntityCacheKey(Type entityType, object id)
         {
-            return Equals(obj as BaseEntity);
-        }
-
-        private static bool IsTransient(BaseEntity obj)
-        {
-            return obj != null && Equals(obj.Id, default(int));
-        }
-
-        private Type GetUnproxiedType()
-        {
-            return GetType();
-        }
-
-        public virtual bool Equals(BaseEntity other)
-        {
-            if (other == null)
-                return false;
-
-            if (ReferenceEquals(this, other))
-                return true;
-
-            if (!IsTransient(this) &&
-                !IsTransient(other) &&
-                Equals(Id, other.Id))
-            {
-                var otherType = other.GetUnproxiedType();
-                var thisType = GetUnproxiedType();
-                return thisType.IsAssignableFrom(otherType) ||
-                        otherType.IsAssignableFrom(thisType);
-            }
-
-            return false;
-        }
-
-        public override int GetHashCode()
-        {
-            if (Equals(Id, default(int)))
-                return base.GetHashCode();
-            return Id.GetHashCode();
-        }
-
-        public static bool operator ==(BaseEntity x, BaseEntity y)
-        {
-            return Equals(x, y);
-        }
-
-        public static bool operator !=(BaseEntity x, BaseEntity y)
-        {
-            return !(x == y);
+            return string.Format(NopCachingDefaults.NopEntityCacheKey, entityType.Name.ToLower(), id);
         }
     }
 }

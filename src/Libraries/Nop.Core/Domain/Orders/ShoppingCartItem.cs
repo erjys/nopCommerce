@@ -1,6 +1,4 @@
-using System;
-using Nop.Core.Domain.Catalog;
-using Nop.Core.Domain.Customers;
+﻿using System;
 
 namespace Nop.Core.Domain.Orders
 {
@@ -63,87 +61,14 @@ namespace Nop.Core.Domain.Orders
         /// Gets or sets the date and time of instance update
         /// </summary>
         public DateTime UpdatedOnUtc { get; set; }
-        
+
         /// <summary>
         /// Gets the log type
         /// </summary>
         public ShoppingCartType ShoppingCartType
         {
-            get
-            {
-                return (ShoppingCartType)this.ShoppingCartTypeId;
-            }
-            set
-            {
-                this.ShoppingCartTypeId = (int)value;
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the product
-        /// </summary>
-        public virtual Product Product { get; set; }
-
-        /// <summary>
-        /// Gets or sets the customer
-        /// </summary>
-        public virtual Customer Customer { get; set; }
-
-        /// <summary>
-        /// Gets a value indicating whether the shopping cart item is free shipping
-        /// </summary>
-        public bool IsFreeShipping
-        {
-            get
-            {
-                var product = this.Product;
-                if (product != null)
-                    return product.IsFreeShipping;
-                return true;
-            }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether the shopping cart item is ship enabled
-        /// </summary>
-        public bool IsShipEnabled
-        {
-            get
-            {
-                var product = this.Product;
-                if (product != null)
-                    return product.IsShipEnabled;
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Gets the additional shipping charge
-        /// </summary> 
-        public decimal AdditionalShippingCharge
-        {
-            get
-            {
-                decimal additionalShippingCharge = decimal.Zero;
-                var product = this.Product;
-                if (product != null)
-                    additionalShippingCharge = product.AdditionalShippingCharge * Quantity;
-                return additionalShippingCharge;
-            }
-        }
-
-        /// <summary>
-        /// Gets a value indicating whether the shopping cart item is tax exempt
-        /// </summary>
-        public bool IsTaxExempt
-        {
-            get
-            {
-                var product = this.Product;
-                if (product != null)
-                    return product.IsTaxExempt;
-                return false;
-            }
+            get => (ShoppingCartType)ShoppingCartTypeId;
+            set => ShoppingCartTypeId = (int)value;
         }
     }
 }

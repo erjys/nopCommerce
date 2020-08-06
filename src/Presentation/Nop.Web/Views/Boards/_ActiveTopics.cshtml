@@ -1,6 +1,4 @@
 ﻿@model ActiveDiscussionsModel
-@using Nop.Web.Models.Boards;
-@using Nop.Web.Models.Common;
 <div class="forums-table-section topic-group active-discussions">
     <div class="forums-table-section-title">
         @if (Model.ActiveDiscussionsFeedEnabled)
@@ -9,19 +7,19 @@
         }
         <strong>@T("Forum.ActiveDiscussions")</strong>
     </div>
-        @{
-            var pager = Html.Pager(new PagerModel
-            {
-                PageSize = Model.TopicPageSize,
-                TotalRecords = Model.TopicTotalRecords,
-                PageIndex = Model.TopicPageIndex,
-                ShowTotalSummary = false,
-                RouteActionName = "ActiveDiscussionsPaged",
-                UseRouteLinks = true,
-                RouteValues = new ForumActiveDiscussionsRouteValues()
-            });
-        }
-    @if (!MvcHtmlString.IsNullOrEmpty(pager))
+    @{
+        var pager = Html.Pager(new PagerModel
+        {
+            PageSize = Model.TopicPageSize,
+            TotalRecords = Model.TopicTotalRecords,
+            PageIndex = Model.TopicPageIndex,
+            ShowTotalSummary = false,
+            RouteActionName = "ActiveDiscussionsPaged",
+            UseRouteLinks = true,
+            RouteValues = new ForumActiveDiscussionsRouteValues()
+        });
+    }
+    @if (!string.IsNullOrEmpty(pager.ToHtmlString()))
     {
         <div class="pager upper">
             @pager
@@ -36,6 +34,10 @@
                         <col />
                         <col width="1" />
                         <col width="1" />
+                        @if (Model.AllowPostVoting)
+                        {
+                            <col width="1" />
+                        }
                         <col width="1" />
                     </colgroup>
                     <thead>
@@ -102,7 +104,7 @@
                                     </td>
                                 }
                                 <td class="latest-post">
-                                    @Html.Action("LastPost", new { forumPostId = topic.LastPostId, showTopic = false })
+                                    @await Component.InvokeAsync("ForumLastPost", new { forumPostId = topic.LastPostId, showTopic = false })
                                 </td>
                             </tr>
                         }
@@ -111,7 +113,7 @@
             </div>
         }
     </div>
-    @if (!MvcHtmlString.IsNullOrEmpty(pager))
+    @if (!string.IsNullOrEmpty(pager.ToHtmlString()))
     {
         <div class="pager lower">
             @pager

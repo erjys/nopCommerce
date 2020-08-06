@@ -1,9 +1,9 @@
-﻿@model IList<Nop.Web.Models.Common.AddressAttributeModel>
+﻿@model IList<AddressAttributeModel>
 @using Nop.Core.Domain.Catalog;
 @foreach (var attribute in Model)
 {
-    string controlId = string.Format("address_attribute_{0}", attribute.Id);
-    string textPrompt = attribute.Name;
+    var controlId = $"address_attribute_{attribute.Id}";
+    var textPrompt = attribute.Name;
 
     <div class="inputs custom-attributes">
         <label>@textPrompt:</label>
@@ -53,12 +53,12 @@
             break;
             case AttributeControlType.TextBox:
             {
-                <input name="@(controlId)" type="text" class="textbox" id="@(controlId)" value="@attribute.DefaultValue" />
+                <input name="@(controlId)" type="text" class="textbox" id="@(controlId)" value="@(attribute.DefaultValue)" />
             }
             break;
             case AttributeControlType.MultilineTextbox:
             {
-            <textarea id="@(controlId)" name="@(controlId)">@attribute.DefaultValue</textarea>
+            <textarea id="@(controlId)" name="@(controlId)">@(attribute.DefaultValue)</textarea>
                 }
                 break;
             case AttributeControlType.Datepicker:
@@ -72,7 +72,7 @@
         }
         @if (attribute.IsRequired)
         {
-            @Html.RequiredHint()
+            <nop-required />
         }
     </div>
 }

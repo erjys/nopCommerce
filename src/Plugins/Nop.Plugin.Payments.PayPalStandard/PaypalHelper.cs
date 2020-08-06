@@ -1,12 +1,28 @@
-using Nop.Core.Domain.Payments;
+﻿using Nop.Core.Domain.Payments;
 
 namespace Nop.Plugin.Payments.PayPalStandard
 {
     /// <summary>
-    /// Represents paypal helper
+    /// Represents PayPal helper
     /// </summary>
-    public class PaypalHelper
+    public class PayPalHelper
     {
+        #region Properties
+
+        /// <summary>
+        /// Get nopCommerce partner code
+        /// </summary>
+        public static string NopCommercePartnerCode => "nopCommerce_SP";
+
+        /// <summary>
+        /// Get the generic attribute name that is used to store an order total that actually sent to PayPal (used to PDT order total validation)
+        /// </summary>
+        public static string OrderTotalSentToPayPal => "OrderTotalSentToPayPal";
+
+        #endregion
+
+        #region Methods
+
         /// <summary>
         /// Gets a payment status
         /// </summary>
@@ -26,15 +42,11 @@ namespace Nop.Plugin.Payments.PayPalStandard
             switch (paymentStatus.ToLowerInvariant())
             {
                 case "pending":
-                    switch (pendingReason.ToLowerInvariant())
+                    result = (pendingReason.ToLowerInvariant()) switch
                     {
-                        case "authorization":
-                            result = PaymentStatus.Authorized;
-                            break;
-                        default:
-                            result = PaymentStatus.Pending;
-                            break;
-                    }
+                        "authorization" => PaymentStatus.Authorized,
+                        _ => PaymentStatus.Pending,
+                    };
                     break;
                 case "processed":
                 case "completed":
@@ -54,8 +66,10 @@ namespace Nop.Plugin.Payments.PayPalStandard
                 default:
                     break;
             }
+
             return result;
         }
+
+        #endregion
     }
 }
-

@@ -1,8 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
+using Nop.Data;
+using Nop.Services.Caching;
+using Nop.Services.Caching.Extensions;
 using Nop.Services.Events;
 
 namespace Nop.Services.Catalog
@@ -14,23 +16,21 @@ namespace Nop.Services.Catalog
     {
         #region Fields
 
-        private readonly IRepository<ManufacturerTemplate> _manufacturerTemplateRepository;
+        private readonly ICacheKeyService _cacheKeyService;
         private readonly IEventPublisher _eventPublisher;
+        private readonly IRepository<ManufacturerTemplate> _manufacturerTemplateRepository;
 
         #endregion
-        
+
         #region Ctor
 
-        /// <summary>
-        /// Ctor
-        /// </summary>
-        /// <param name="manufacturerTemplateRepository">Manufacturer template repository</param>
-        /// <param name="eventPublisher">Event published</param>
-        public ManufacturerTemplateService(IRepository<ManufacturerTemplate> manufacturerTemplateRepository,
-            IEventPublisher eventPublisher)
+        public ManufacturerTemplateService(ICacheKeyService cacheKeyService,
+        IEventPublisher eventPublisher,
+            IRepository<ManufacturerTemplate> manufacturerTemplateRepository)
         {
-            this._manufacturerTemplateRepository = manufacturerTemplateRepository;
-            this._eventPublisher = eventPublisher;
+            _cacheKeyService = cacheKeyService;
+            _eventPublisher = eventPublisher;
+            _manufacturerTemplateRepository = manufacturerTemplateRepository;
         }
 
         #endregion
@@ -44,7 +44,7 @@ namespace Nop.Services.Catalog
         public virtual void DeleteManufacturerTemplate(ManufacturerTemplate manufacturerTemplate)
         {
             if (manufacturerTemplate == null)
-                throw new ArgumentNullException("manufacturerTemplate");
+                throw new ArgumentNullException(nameof(manufacturerTemplate));
 
             _manufacturerTemplateRepository.Delete(manufacturerTemplate);
 
@@ -62,7 +62,8 @@ namespace Nop.Services.Catalog
                         orderby pt.DisplayOrder, pt.Id
                         select pt;
 
-            var templates = query.ToList();
+            var templates = query.ToCachedList(_cacheKeyService.PrepareKeyForDefaultCache(NopCatalogDefaults.ManufacturerTemplatesAllCacheKey));
+
             return templates;
         }
 
@@ -76,7 +77,7 @@ namespace Nop.Services.Catalog
             if (manufacturerTemplateId == 0)
                 return null;
 
-            return _manufacturerTemplateRepository.GetById(manufacturerTemplateId);
+            return _manufacturerTemplateRepository.ToCachedGetById(manufacturerTemplateId);
         }
 
         /// <summary>
@@ -86,7 +87,7 @@ namespace Nop.Services.Catalog
         public virtual void InsertManufacturerTemplate(ManufacturerTemplate manufacturerTemplate)
         {
             if (manufacturerTemplate == null)
-                throw new ArgumentNullException("manufacturerTemplate");
+                throw new ArgumentNullException(nameof(manufacturerTemplate));
 
             _manufacturerTemplateRepository.Insert(manufacturerTemplate);
 
@@ -101,14 +102,14 @@ namespace Nop.Services.Catalog
         public virtual void UpdateManufacturerTemplate(ManufacturerTemplate manufacturerTemplate)
         {
             if (manufacturerTemplate == null)
-                throw new ArgumentNullException("manufacturerTemplate");
+                throw new ArgumentNullException(nameof(manufacturerTemplate));
 
             _manufacturerTemplateRepository.Update(manufacturerTemplate);
 
             //event notification
             _eventPublisher.EntityUpdated(manufacturerTemplate);
         }
-        
+
         #endregion
     }
 }
